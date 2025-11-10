@@ -23,11 +23,11 @@ function requireEnv(name){
 
 export function getLoginUrl(){
     const clientId = requireEnv("CLIENT_ID");
-    const redirectUri = requireEnv("redirectUri");
+    const redirectUri = requireEnv("REDIRECT_URI");
 
     const params = new URLSearchParams({
         client_id: clientId,
-        repsonse_type: "code",
+        response_type: "code",
         redirect_uri: redirectUri,
         scope: SCOPES
     });
@@ -50,7 +50,7 @@ async function saveToken(data){
 export async function  handleCallback(code){
     const clientId = requireEnv("CLIENT_ID");
     const clientSecret = requireEnv("CLIENT_SECRET");
-    const redirectUri = requireEnv("redirectUri");
+    const redirectUri = requireEnv("REDIRECT_URI");
     
     const body = new URLSearchParams({
         grant_type: "authorization_code",
