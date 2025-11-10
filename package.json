@@ -1,0 +1,27 @@
+{
+  "name": "spotify_mcp",
+  "version": "1.0.0",
+  "type":"module",
+  "main": "src/mcp-server.js",
+  "description": "",
+  "scripts": {
+    "dev": "node src/mcp-server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shanikn/Spotify_MCP.git"
+  },
+  "keywords": [],
+  "author": "Shani Knobel",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shanikn/Spotify_MCP/issues"
+  },
+  "homepage": "https://github.com/shanikn/Spotify_MCP#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "zod": "^3.25.76"
+  }
+}
