@@ -1,9 +1,15 @@
 // Web API wrapper (play, pause, search)
 import { getAccessToken } from "./auth.js";
+import fs from "fs";
 
 const API_BASE = "https://api.spotify.com/v1";
 
-
+let config = {};
+try {
+    config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
+} catch {
+    config = { enabledTools: ["spotify.getPlayback", "spotify.play", "spotify.pause"], defaultDevice: null };
+}
 
 async function spotifyFetch(path, options = {}) {
     const token = await getAccessToken();
@@ -61,7 +67,20 @@ export async function pausePlayback() {
     return { ok: true };
 }
 
+// Added a devide property
 export async function resumePlayback() {
-    await spotifyFetch("/me/player/play", { method: "PUT" });
+    const device = config.defaultDevice || null;
+    const body = device ? JSON.stringify({ device_id: device}) : undefined;
+
+
+    await spotifyFetch("/me/player/play", { 
+        method: "PUT",
+        body 
+    });
     return { ok: true };
+}
+
+// Devices IDs
+export async function listDevices() {
+    return spotifyFetch("/me/player/devices");
 }

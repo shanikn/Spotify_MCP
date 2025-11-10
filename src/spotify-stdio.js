@@ -1,61 +1,23 @@
 // MCP command definitions
-import express from "express";
 import { config as loadEnv } from "dotenv";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { getLoginUrl, handleCallback } from "./auth.js";
 import {
     getPlaybackState,
     pausePlayback,
     resumePlayback
 } from "./spotify.js";
 
-import open from "open";
-
-
 loadEnv();
 
-const app = express();
-app.use(express.json());
-
-// Simple info page
-app.get("/", (_req, res) => {
-    res.send(
-        "Spotify MCP server is running. Go to /login to connect your Spotify account."
-    );
-});
-
-// Start OAuth login
-app.get("/login", (_req, res) => {
-    const url = getLoginUrl();
-    res.redirect(url);
-});
-
-
-// OAuth callback
-app.get("/callback", async (req, res) => {
-    const code = req.query.code;
-    if (!code) {
-        return res.status(400).send("Missing code");
-    }
-
-    try {
-        await handleCallback(String(code));
-        res.send("Spotify auth complete. You can close this tab now.");
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error during Spotify auth, check server logs.");
-    }
-});
-
-
-// MCP server instance
+// Create MCP server
 const server = new McpServer({
     name: "spotify_mcp",
     version: "1.0.0"
 });
+
 
 // Tool: get playback state
 server.registerTool(
@@ -69,15 +31,16 @@ server.registerTool(
             deviceName: z.string().nullable(),
             progressMs: z.number().nullable(),
             track: z
-            .object({
-                name: z.string(),
-                artists: z.array(z.string()),
-                album: z.string().nullable(),
-                url: z.string().nullable()
-            })
-            .nullable()
+                .object({
+                    name: z.string(),
+                    artists: z.array(z.string()),
+                    album: z.string().nullable(),
+                    url: z.string().nullable()
+                })
+                .nullable()
         })
     },
+    
     async () => {
         const playback = await getPlaybackState();
         return {
@@ -86,7 +49,6 @@ server.registerTool(
         };
     }
 );
-
 
 
 // Tool: pause
@@ -98,6 +60,7 @@ server.registerTool(
         inputSchema: z.object({}),
         outputSchema: z.object({ ok: z.boolean() })
     },
+    
     async () => {
         const result = await pausePlayback();
         return {
@@ -106,6 +69,7 @@ server.registerTool(
         };
     }
 );
+
 
 
 // Tool: play
@@ -117,6 +81,7 @@ server.registerTool(
         inputSchema: z.object({}),
         outputSchema: z.object({ ok: z.boolean() })
     },
+    
     async () => {
         const result = await resumePlayback();
         return {
@@ -127,29 +92,9 @@ server.registerTool(
 );
 
 
-// MCP HTTP endpoint
-app.post("/mcp", async (req, res) => {
-    const transport = new StreamableHTTPServerTransport({
-        enableJsonResponse: true
-    });
 
-    res.on("close", () => {
-        transport.close();
-    });
+// Start stdio transport (Claude Desktop reads/writes here)
+const transport = new StdioServerTransport();
 
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-});
-
-
-
-const PORT = parseInt(process.env.PORT || "8888", 10);
-app
-    .listen(PORT, () => {
-        console.log(`Spotify MCP listening on http://127.0.0.1:${PORT}`);
-        open(`http://127.0.0.1:${PORT}/login`)
-    })
-    .on("error", (err) => {
-        console.error("Server error:", err);
-        process.exit(1);
-    });
+await server.connect(transport);
+await transport.start();

@@ -1,0 +1,4 @@
+{
+    "enabledTools": ["spotify.getPlayback", "spotify.play", "spotify.pause"],
+    "defaultDevice": "iphone"
+}
