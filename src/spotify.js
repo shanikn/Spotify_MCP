@@ -36,8 +36,20 @@ async function spotifyFetch(path, options = {}) {
         throw new Error(`Spotify API error ${res.status}: ${text}`);
     }
 
+    // Handle 204 No Content or empty responses
     if (res.status === 204) return null;
-    return res.json();
+    
+    // Check if response has content
+    const text = await res.text();
+    if (!text || text.trim().length === 0) return null;
+    
+    // Parse JSON
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        console.error('Failed to parse JSON:', text);
+        return null;
+    }
 }
 
 
@@ -146,9 +158,34 @@ export async function skipToNext() {
     return { ok: true };
 }
 
-// Skip to previous track
-export async function skipToPrevious() {
+// Restart current track (seek to beginning)
+export async function restartTrack() {
     await spotifyFetch("/me/player/previous", { method: "POST" });
+    return { ok: true };
+}
+
+// Skip to actual previous track (even if >3s into current song)
+export async function skipToPreviousTrack() {
+    // Get current playback to check progress
+    const playback = await spotifyFetch("/me/player");
+    
+    if (!playback) {
+        throw new Error("No active playback");
+    }
+    
+    // If we're more than 3 seconds in, we need to hit previous twice
+    if (playback.progress_ms > 3000) {
+        // First call restarts the song
+        await spotifyFetch("/me/player/previous", { method: "POST" });
+        // Small delay to let Spotify process
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // Second call goes to actual previous track
+        await spotifyFetch("/me/player/previous", { method: "POST" });
+    } else {
+        // Less than 3 seconds, one call is enough
+        await spotifyFetch("/me/player/previous", { method: "POST" });
+    }
+    
     return { ok: true };
 }
 

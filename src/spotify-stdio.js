@@ -19,7 +19,8 @@ import {
     getQueue,
     setVolume,
     skipToNext,
-    skipToPrevious,
+    restartTrack,
+    skipToPreviousTrack,
     seekToPosition,
     setShuffle,
     setRepeat,
@@ -245,13 +246,32 @@ server.registerTool(
 );
 
 server.registerTool(
-    "spotify_skipToPrevious",
+    "spotify_restartTrack",
     {
-        description: "Skip to the previous track",
+        description: "Restart the current track from the beginning",
         inputSchema: {}
     },
     async () => {
-        await skipToPrevious();
+        await restartTrack();
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "Restarted current track"
+                }
+            ]
+        };
+    }
+);
+
+server.registerTool(
+    "spotify_skipToPrevious",
+    {
+        description: "Skip to the previous track (always goes to the actual previous song, even if >3 seconds into current track)",
+        inputSchema: {}
+    },
+    async () => {
+        await skipToPreviousTrack();
         return {
             content: [
                 {
