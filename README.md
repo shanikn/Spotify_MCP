@@ -1,6 +1,11 @@
-# 🎧 Spotify MCP (Model Context Protocol Server)
+<p align="center">
+  <img src="https://github.com/matyo91/matyo91/raw/main/assets/github.gif" alt="Hi, I'm Shani 👋 I'm a 🚀 starting developer 🚀 I ❤️ Happy Hardcore ❤️">
+</p>
 
-A local MCP server that lets Claude (or any MCP client) control Spotify playback on your account — play, pause, or get the current track status — using Spotify’s Web API.
+# 🎧 Spotify MCP - works with Windows
+
+A local MCP server that lets Claude (or any MCP client) control Spotify playback on your account.
+You can use actions like: play, pause, or get the current track status — by using Spotify’s Web API.
 
 ---
 

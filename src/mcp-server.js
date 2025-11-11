@@ -13,6 +13,7 @@ import {
 } from "./spotify.js";
 
 import open from "open";
+import fs from "fs";
 
 
 loadEnv();
@@ -147,7 +148,11 @@ const PORT = parseInt(process.env.PORT || "8888", 10);
 app
     .listen(PORT, () => {
         console.log(`Spotify MCP listening on http://127.0.0.1:${PORT}`);
-        open(`http://127.0.0.1:${PORT}/login`)
+        if(!fs.existsSync("tokens.json")){
+            open(`http://127.0.0.1:${PORT}/login`)
+        } else {
+            console.log("✅ Already authenticated with Spotify");
+        }
     })
     .on("error", (err) => {
         console.error("Server error:", err);
