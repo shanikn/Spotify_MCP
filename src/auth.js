@@ -1,11 +1,14 @@
 // OAuth flow and token refresh
-import { config as loadEnv } from "dotenv";
+// Note: Environment variables should be set by the parent process (either .env via mcp-server.js or Claude Desktop config)
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-loadEnv();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const TOKEN_PATH = path.resolve("./tokens.json");
+// Token file is in the project root, one level up from src/
+const TOKEN_PATH = path.join(__dirname, "..", "tokens.json");
 
 const SCOPES = [
     "user-read-playback-state",

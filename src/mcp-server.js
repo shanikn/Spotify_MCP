@@ -3,7 +3,6 @@ import express from "express";
 import { config as loadEnv } from "dotenv";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { z } from "zod";
 
 import { getLoginUrl, handleCallback } from "./auth.js";
 import {
@@ -52,77 +51,66 @@ app.get("/callback", async (req, res) => {
 });
 
 
-// MCP server instance
+// MCP server instance using McpServer (high-level API)
 const server = new McpServer({
     name: "spotify_mcp",
     version: "1.0.0"
 });
 
-// Tool: get playback state
+// Register tools using the high-level API
 server.registerTool(
-    "spotify.getPlayback",
+    "spotify_getPlayback",
     {
-        title: "Get Spotify playback state",
-        description: "Returns current playback info for the user.",
-        inputSchema: z.object({}),
-        outputSchema: z.object({
-            isPlaying: z.boolean(),
-            deviceName: z.string().nullable(),
-            progressMs: z.number().nullable(),
-            track: z
-            .object({
-                name: z.string(),
-                artists: z.array(z.string()),
-                album: z.string().nullable(),
-                url: z.string().nullable()
-            })
-            .nullable()
-        })
+        description: "Get current Spotify playback state including track info, playback status, and device name",
+        inputSchema: {} // No parameters needed
     },
     async () => {
         const playback = await getPlaybackState();
         return {
-            content: [{ type: "text", text: JSON.stringify(playback, null, 2) }],
-            structuredContent: playback
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(playback, null, 2)
+                }
+            ]
         };
     }
 );
 
-
-
-// Tool: pause
 server.registerTool(
-    "spotify.pause",
+    "spotify_pause",
     {
-        title: "Pause Spotify",
-        description: "Pause playback on the active device.",
-        inputSchema: z.object({}),
-        outputSchema: z.object({ ok: z.boolean() })
+        description: "Pause Spotify playback on the active device",
+        inputSchema: {} // No parameters needed
     },
     async () => {
-        const result = await pausePlayback();
+        await pausePlayback();
         return {
-            content: [{ type: "text", text: "Paused Spotify playback." }],
-            structuredContent: result
+            content: [
+                {
+                    type: "text",
+                    text: "Paused Spotify playback."
+                }
+            ]
         };
     }
 );
 
-
-// Tool: play
 server.registerTool(
-    "spotify.play",
+    "spotify_play",
     {
-        title: "Play Spotify",
-        description: "Resume playback on the active device.",
-        inputSchema: z.object({}),
-        outputSchema: z.object({ ok: z.boolean() })
+        description: "Resume Spotify playback on the active device",
+        inputSchema: {} // No parameters needed
     },
     async () => {
-        const result = await resumePlayback();
+        await resumePlayback();
         return {
-            content: [{ type: "text", text: "Resumed Spotify playback." }],
-            structuredContent: result
+            content: [
+                {
+                    type: "text",
+                    text: "Resumed Spotify playback."
+                }
+            ]
         };
     }
 );
@@ -138,7 +126,8 @@ app.post("/mcp", async (req, res) => {
         transport.close();
     });
 
-    await server.connect(transport);
+    // McpServer wraps the low-level Server, access it via .server
+    await server.server.connect(transport);
     await transport.handleRequest(req, res, req.body);
 });
 
