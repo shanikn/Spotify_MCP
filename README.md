@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/matyo91/matyo91/raw/main/assets/github.gif" alt="Hi, I'm Shani 👋 I'm a 🚀 starting developer 🚀 I ❤️ Happy Hardcore ❤️">
+  <img src="assets/milo-header.gif" alt="I ❤️ Milo the cat" width="800">
 </p>
 
 # 🎧 Spotify MCP - works with Windows
