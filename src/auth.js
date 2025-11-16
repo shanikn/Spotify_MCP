@@ -1,5 +1,5 @@
 // OAuth flow and token refresh
-// Note: Environment variables should be set by the parent process (either .env via mcp-server.js or Claude Desktop config)
+// NOTE: Environment variables should be set by the parent process (either .env via mcp-server.js or Claude Desktop config)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,11 @@ const TOKEN_PATH = path.join(__dirname, "..", "tokens.json");
 const SCOPES = [
     "user-read-playback-state",
     "user-modify-playback-state",
-    "user-read-currently-playing"
+    "user-read-currently-playing",
+    "user-library-read",
+    "user-read-recently-played",
+    "playlist-read-private",
+    "playlist-read-collaborative"
 ].join(" ");
 
 function requireEnv(name){
@@ -39,11 +43,14 @@ export function getLoginUrl(){
 }
 
 
+// QUESTION: do we still need this? should we change the function to do     automatic authentication refresh?
 async function saveToken(data){
     const withExpiry = {
         ...data,
         // expire a bit earlier than expiry, to be safe
-        expires_at: Date.now() + (data.expires_in - 60)*1000
+        expires_at: Date.now() + (data.expires_in - 60)*1000,
+        // Store the granted scope for validation
+        scope: data.scope || SCOPES
     };
     await fs.writeFile(TOKEN_PATH, JSON.stringify(withExpiry, null, 2), "utf-8");
     return withExpiry;
@@ -133,4 +140,35 @@ export async function getAccessToken() {
 
     const refreshed = await refreshToken(token);
     return refreshed.access_token;
+}
+
+// Function to check if current tokens have required scopes
+export async function checkScopes() {
+    try {
+        const token = await loadToken();
+        // Store the scopes that were granted when this token was issued
+        return {
+            hasTokens: true,
+            currentScopes: token.scope || 'unknown',
+            requiredScopes: SCOPES
+        };
+    } catch {
+        return {
+            hasTokens: false,
+            currentScopes: null,
+            requiredScopes: SCOPES
+        };
+    }
+}
+
+// Function to force re-authentication (clears tokens)
+export async function forceReauth() {
+    try {
+        await fs.unlink(TOKEN_PATH);
+        console.error("🔧 Cleared tokens to force re-authentication");
+        return true;
+    } catch {
+        // File doesn't exist, that's fine
+        return true;
+    }
 }

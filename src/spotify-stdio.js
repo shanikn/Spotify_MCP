@@ -27,7 +27,13 @@ import {
     addToQueue,
     search,
     playUri,
-    getUserPlaylists
+    getUserPlaylists,
+    getSavedAlbums,
+    getRecentlyAddedAlbums,
+    getRecentlyAddedTracks,
+    getRecentlyPlayed,
+    getRecommendations,
+    getAvailableGenres
 } from "./spotify.js";
 
 // No need to load .env here - environment variables come from Claude Desktop config
@@ -434,6 +440,82 @@ server.registerTool(
                 {
                     type: "text",
                     text: JSON.stringify(playlists, null, 2)
+                }
+            ]
+        };
+    }
+);
+
+// Authentication
+server.registerTool(
+    "spotify_reauth",
+    {
+        description: "Re-authenticate with Spotify to get new permissions/scopes",
+        inputSchema: {}
+    },
+    async () => {
+        // Delete existing tokens to force re-auth
+        const tokenPath = path.join(__dirname, "..", "tokens.json");
+        try {
+            fs.unlinkSync(tokenPath);
+        } catch (e) {
+            // Token file doesn't exist, that's fine
+        }
+        
+        // Import auth functions
+        const { getLoginUrl } = await import("./auth.js");
+        const loginUrl = getLoginUrl();
+        
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Tokens cleared. Please visit this URL to re-authenticate:\n\n${loginUrl}\n\nAfter completing authentication, you'll have access to all Spotify features including saved albums.`
+                }
+            ]
+        };
+    }
+);
+
+// Saved Albums
+server.registerTool(
+    "spotify_getSavedAlbums",
+    {
+        description: "Get user's saved albums from their Spotify library",
+        inputSchema: {
+            limit: z.number().min(1).max(50).optional().describe("Number of albums to return (max 50, default: 20)"),
+            offset: z.number().min(0).optional().describe("The index of the first album to return (default: 0)")
+        }
+    },
+    async (args) => {
+        const albums = await getSavedAlbums(args.limit || 20, args.offset || 0);
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(albums, null, 2)
+                }
+            ]
+        };
+    }
+);
+
+server.registerTool(
+    "spotify_getRecentlyAddedAlbums",
+    {
+        description: "Get albums recently added to user's library (saved albums), sorted by when they were added",
+        inputSchema: {
+            limit: z.number().min(1).max(50).optional().describe("Number of recently added albums to return (max 50, default: 20)"),
+            offset: z.number().min(0).optional().describe("The index of the first album to return (default: 0)")
+        }
+    },
+    async (args) => {
+        const recentAlbums = await getRecentlyAddedAlbums(args.limit || 20, args.offset || 0);
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(recentAlbums, null, 2)
                 }
             ]
         };

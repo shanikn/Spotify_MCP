@@ -19,7 +19,9 @@ try {
     config = { enabledTools: ["spotify.getPlayback", "spotify.play", "spotify.pause"], defaultDevice: null };
 }
 
-async function spotifyFetch(path, options = {}) {
+// QUESTION: what's happening here?
+//  spotify fetch (token)
+async function spotifyFetch(path, options = {}, retryCount = 0) {
     const token = await getAccessToken();
 
     const res = await fetch(`${API_BASE}${path}`, {
@@ -30,6 +32,58 @@ async function spotifyFetch(path, options = {}) {
         ...(options.headers || {})
         }
     });
+
+    // Handle 403 insufficient scope errors
+    if (res.status === 403) {
+        const errorText = await res.text();
+        let errorData;
+        try {
+            errorData = JSON.parse(errorText);
+        } catch {
+            errorData = { error: { message: errorText } };
+        }
+        
+        if (errorData.error?.message?.includes("Insufficient client scope")) {
+            // Automatically handle scope issues by clearing tokens and providing auth URL
+            const tokenPath = path.join(__dirname, "..", "tokens.json");
+            try {
+                fs.unlinkSync(tokenPath);
+                console.error("🔧 Cleared expired tokens due to insufficient scope");
+            } catch {
+                // Token file doesn't exist, that's fine
+            }
+            
+            // Import auth function and get login URL
+            const { getLoginUrl } = await import("./auth.js");
+            const loginUrl = getLoginUrl();
+            
+            // Try to open the URL automatically
+            try {
+                const open = (await import('open')).default;
+                await open(loginUrl);
+                console.error("🚀 Auto-opened authentication URL in browser");
+            } catch {
+                console.error("📋 Please visit this URL to re-authenticate:");
+                console.error(loginUrl);
+            }
+            
+            throw new Error(`Missing Spotify permissions. Authentication URL opened automatically. Please complete authentication and try again.`);
+        }
+        throw new Error(`Spotify API error ${res.status}: ${errorText}`);
+    }
+
+    // Handle 401 unauthorized errors (token expired/invalid)
+    if (res.status === 401 && retryCount === 0) {
+        // Token might be expired, try refreshing once
+        try {
+            // Force token refresh by clearing cache and getting new token
+            await getAccessToken();
+            // Retry the request once
+            return await spotifyFetch(path, options, 1);
+        } catch (refreshError) {
+            throw new Error(`Authentication failed. Please re-authenticate. Error: ${refreshError.message}`);
+        }
+    }
 
     if (!res.ok) {
         const text = await res.text();
@@ -52,7 +106,7 @@ async function spotifyFetch(path, options = {}) {
     }
 }
 
-
+//  whats the playback state right now? (active/not active)
 export async function getPlaybackState() {
     const data = await spotifyFetch("/me/player");
 
@@ -82,6 +136,7 @@ export async function getPlaybackState() {
     };
 }
 
+// pause playback
 export async function pausePlayback() {
     await spotifyFetch("/me/player/pause", { method: "PUT" });
     return { ok: true };
@@ -113,6 +168,18 @@ export async function pingDevice() {
     return { ok: true };
 }
 
+// BUG:
+// FIX:
+// TODO: FJLSLS
+// [ ]
+// [x] 
+// IMPLEMENT: 
+// QUESTION: 
+// NOTE: notice we need to make authentication varifies automatically
+// STYLE: 
+// TEST: 
+
+// IMPORTANT!! get queue!!!!!!
 // Get current playback queue
 export async function getQueue() {
     const data = await spotifyFetch("/me/player/queue");
@@ -146,11 +213,13 @@ export async function getQueue() {
     };
 }
 
+
 // Set volume (0-100)
 export async function setVolume(volumePercent) {
     await spotifyFetch(`/me/player/volume?volume_percent=${volumePercent}`, { method: "PUT" });
     return { ok: true };
 }
+
 
 // Skip to next track
 export async function skipToNext() {
@@ -164,6 +233,7 @@ export async function restartTrack() {
     return { ok: true };
 }
 
+
 // Skip to actual previous track (even if >3s into current song)
 export async function skipToPreviousTrack() {
     // Get current playback to check progress
@@ -173,7 +243,7 @@ export async function skipToPreviousTrack() {
         throw new Error("No active playback");
     }
     
-    // If we're more than 3 seconds in, we need to hit previous twice
+    // If we're more than 3 seconds in, we need to hit previous twice- to actually go to the previous song (instead of just starting over the current one)
     if (playback.progress_ms > 3000) {
         // First call restarts the song
         await spotifyFetch("/me/player/previous", { method: "POST" });
@@ -189,17 +259,21 @@ export async function skipToPreviousTrack() {
     return { ok: true };
 }
 
+
+
 // Seek to position in track (milliseconds)
 export async function seekToPosition(positionMs) {
     await spotifyFetch(`/me/player/seek?position_ms=${positionMs}`, { method: "PUT" });
     return { ok: true };
 }
 
-// Toggle shuffle
+// Toggle shuffle (on->off, off=>on)
 export async function setShuffle(state) {
     await spotifyFetch(`/me/player/shuffle?state=${state}`, { method: "PUT" });
     return { ok: true };
 }
+
+
 
 // Set repeat mode (track, context, off)
 export async function setRepeat(state) {
@@ -207,12 +281,14 @@ export async function setRepeat(state) {
     return { ok: true };
 }
 
+// IMPORTANT!!  add to queue!!!
 // Add item to queue
 export async function addToQueue(uri) {
     await spotifyFetch(`/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: "POST" });
     return { ok: true };
 }
 
+// IMPORTANT!! search: song/artist/album/playlist
 // Search for tracks, artists, albums, playlists
 export async function search(query, types = ["track"], limit = 10) {
     const typeString = types.join(",");
@@ -259,6 +335,7 @@ export async function search(query, types = ["track"], limit = 10) {
     return results;
 }
 
+
 // Play specific track/album/playlist by URI
 export async function playUri(uri, contextUri = null) {
     const device = config.defaultDevice || null;
@@ -287,6 +364,8 @@ export async function playUri(uri, contextUri = null) {
     return { ok: true };
 }
 
+
+// IMPORTANT!! library playlists
 // Get user's playlists
 export async function getUserPlaylists(limit = 20) {
     const data = await spotifyFetch(`/me/playlists?limit=${limit}`);
@@ -298,4 +377,169 @@ export async function getUserPlaylists(limit = 20) {
         uri: playlist.uri,
         url: playlist.external_urls.spotify
     }));
+}
+
+
+
+// IMPORTANT!! library albums
+// Get user's saved albums
+export async function getSavedAlbums(limit = 20, offset = 0) {
+    const data = await spotifyFetch(`/me/albums?limit=${limit}&offset=${offset}`);
+    
+    return {
+        total: data.total,
+        items: (data.items || []).map(item => ({
+            addedAt: item.added_at,
+            album: {
+                name: item.album.name,
+                artists: item.album.artists.map(a => a.name),
+                releaseDate: item.album.release_date,
+                totalTracks: item.album.total_tracks,
+                uri: item.album.uri,
+                url: item.album.external_urls.spotify
+            }
+        }))
+    };
+}
+
+
+// Get available recommendation seed genres
+export async function getAvailableGenres() {
+    const data = await spotifyFetch("/recommendations/available-genre-seeds");
+    return {
+        genres: data.genres || []
+    };
+}
+
+// Get recently played tracks
+export async function getRecentlyPlayed(limit = 20, after = null, before = null) {
+    let url = `/me/player/recently-played?limit=${limit}`;
+    
+    if (after) {
+        url += `&after=${after}`;
+    }
+    if (before) {
+        url += `&before=${before}`;
+    }
+    
+    const data = await spotifyFetch(url);
+    
+    return {
+        items: (data.items || []).map(item => ({
+            track: {
+                name: item.track.name,
+                artists: item.track.artists.map(a => a.name),
+                album: item.track.album.name,
+                uri: item.track.uri,
+                url: item.track.external_urls.spotify
+            },
+            playedAt: item.played_at,
+            context: item.context ? {
+                type: item.context.type, // playlist, album, etc.
+                uri: item.context.uri,
+                url: item.context.external_urls?.spotify
+            } : null
+        })),
+        next: data.next,
+        cursors: data.cursors
+    };
+}
+
+// Get recently added albums (sorted by when they were added to library)
+export async function getRecentlyAddedAlbums(limit = 20, offset = 0) {
+    const data = await spotifyFetch(`/me/albums?limit=${limit}&offset=${offset}`);
+    
+    // Albums are returned in reverse chronological order by default (most recent first)
+    return {
+        total: data.total,
+        items: (data.items || []).map(item => ({
+            addedAt: item.added_at,
+            album: {
+                name: item.album.name,
+                artists: item.album.artists.map(a => a.name),
+                releaseDate: item.album.release_date,
+                totalTracks: item.album.total_tracks,
+                uri: item.album.uri,
+                url: item.album.external_urls.spotify
+            }
+        }))
+    };
+}
+
+// Get recently added tracks (liked songs, sorted by when they were added)
+export async function getRecentlyAddedTracks(limit = 20, offset = 0) {
+    const data = await spotifyFetch(`/me/tracks?limit=${limit}&offset=${offset}`);
+    
+    // Tracks are returned in reverse chronological order by default (most recent first)
+    return {
+        total: data.total,
+        items: (data.items || []).map(item => ({
+            addedAt: item.added_at,
+            track: {
+                name: item.track.name,
+                artists: item.track.artists.map(a => a.name),
+                album: item.track.album.name,
+                uri: item.track.uri,
+                url: item.track.external_urls.spotify
+            }
+        }))
+    };
+}
+
+
+// Get recommendations based on seeds
+export async function getRecommendations({
+    seedArtists = [],
+    seedTracks = [],
+    seedGenres = [],
+    targetEnergy = null,
+    targetValence = null,
+    targetDanceability = null,
+    targetInstrumentalness = null,
+    targetTempo = null,
+    limit = 20
+}) {
+    // Validate total seeds (max 5)
+    const totalSeeds = seedArtists.length + seedTracks.length + seedGenres.length;
+    if (totalSeeds === 0) {
+        throw new Error("At least one seed (artist, track, or genre) is required");
+    }
+    if (totalSeeds > 5) {
+        throw new Error("Maximum 5 seeds total (artists + tracks + genres)");
+    }
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    
+    if (seedArtists.length > 0) params.set("seed_artists", seedArtists.join(","));
+    if (seedTracks.length > 0) params.set("seed_tracks", seedTracks.join(","));
+    if (seedGenres.length > 0) params.set("seed_genres", seedGenres.join(","));
+    
+    if (targetEnergy !== null) params.set("target_energy", targetEnergy);
+    if (targetValence !== null) params.set("target_valence", targetValence);
+    if (targetDanceability !== null) params.set("target_danceability", targetDanceability);
+    if (targetInstrumentalness !== null) params.set("target_instrumentalness", targetInstrumentalness);
+    if (targetTempo !== null) params.set("target_tempo", targetTempo);
+    
+    params.set("limit", limit);
+    
+    const data = await spotifyFetch(`/recommendations?${params.toString()}`);
+    
+    return {
+        seeds: data.seeds,
+        tracks: (data.tracks || []).map(track => ({
+            name: track.name,
+            artists: track.artists.map(a => a.name),
+            album: track.album.name,
+            uri: track.uri,
+            url: track.external_urls.spotify,
+            audioFeatures: {
+                energy: track.energy,
+                valence: track.valence,
+                danceability: track.danceability,
+                instrumentalness: track.instrumentalness,
+                tempo: track.tempo
+            }
+        }))
+    };
 }
