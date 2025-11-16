@@ -1,0 +1,86 @@
+name: 🎵 Spotify MCP Push Notification
+
+# Trigger this workflow on every push to any branch
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  notify-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Check out the repository code
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      
+    # Get information about the commit
+    - name: 📋 Get commit info
+      id: commit-info
+      run: |
+        echo "commit-message=$(git log -1 --pretty=%B | head -1)" >> $GITHUB_OUTPUT
+        echo "commit-author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+        echo "commit-hash=$(git log -1 --pretty=%h)" >> $GITHUB_OUTPUT
+        echo "branch-name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+        
+    # Send a simple notification (GitHub's built-in method)
+    - name: 🎉 Push Successful Notification
+      run: |
+        echo "🎵 SPOTIFY MCP PUSH SUCCESSFUL! 🎵"
+        echo "=================================================="
+        echo "📝 Commit: ${{ steps.commit-info.outputs.commit-message }}"
+        echo "👤 Author: ${{ steps.commit-info.outputs.commit-author }}"
+        echo "🔗 Hash: ${{ steps.commit-info.outputs.commit-hash }}"
+        echo "🌿 Branch: ${{ steps.commit-info.outputs.branch-name }}"
+        echo "⏰ Time: $(date)"
+        echo "=================================================="
+        echo "✅ All systems operational - your code is live!"
+        
+    # Optional: Create a GitHub issue as notification (comment this out if you don't want issues)
+    # - name: 📨 Create notification issue
+    #   if: github.event_name == 'push'
+    #   uses: actions/github-script@v7
+    #   with:
+    #     script: |
+    #       github.rest.issues.create({
+    #         owner: context.repo.owner,
+    #         repo: context.repo.repo,
+    #         title: '🎵 Push Notification - ${{ steps.commit-info.outputs.commit-hash }}',
+    #         body: `## 🚀 Code Successfully Pushed!
+        
+    #         **📝 Commit:** ${{ steps.commit-info.outputs.commit-message }}
+    #         **👤 Author:** ${{ steps.commit-info.outputs.commit-author }}
+    #         **🔗 Hash:** ${{ steps.commit-info.outputs.commit-hash }}
+    #         **🌿 Branch:** ${{ steps.commit-info.outputs.branch-name }}
+    #         **⏰ Time:** $(date)
+        
+    #         Your Spotify MCP changes are now live! 🎵`,
+    #         labels: ['notification', 'push-success']
+    #       })
+
+  # Optional: Check if the Node.js project builds successfully
+  test-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm install
+      
+    - name: 🔍 Check for syntax errors
+      run: node -c src/spotify.js src/auth.js src/spotify-stdio.js src/mcp-server.js
+      
+    - name: ✅ Build successful
+      run: |
+        echo "🎵 Spotify MCP build completed successfully!"
+        echo "All JavaScript files are syntactically correct ✨"

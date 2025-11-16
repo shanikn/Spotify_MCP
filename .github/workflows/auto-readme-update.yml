@@ -1,0 +1,83 @@
+name: 📝 Auto-Update README
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'src/**' ]  # Only run when source code changes
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: 📦 Install dependencies
+      run: npm install
+      
+    - name: 🔍 Scan code for tools
+      run: |
+        # Extract tool names from your MCP server files
+        echo "## 🎵 Available Spotify Tools" > tools.md
+        echo "" >> tools.md
+        
+        # Scan for registerTool calls and extract tool names
+        grep -o 'registerTool([^,]*' src/spotify-stdio.js | \
+        sed 's/registerTool("/- `/' | \
+        sed 's/"/`/' | \
+        sort >> tools.md
+        
+        # Count total tools
+        TOOL_COUNT=$(grep -c "registerTool" src/spotify-stdio.js)
+        echo "Found $TOOL_COUNT tools"
+        echo "TOOL_COUNT=$TOOL_COUNT" >> $GITHUB_ENV
+        
+    - name: 📝 Update README
+      run: |
+        # Update tool count in README
+        sed -i "s/[0-9]\+\+ Spotify tools/$TOOL_COUNT+ Spotify tools/g" README.md
+        
+        # Replace tool list section
+        # This updates everything between ## Available Tools and the next ##
+        awk '
+        /## Available Tools/ {
+          print
+          while ((getline line < "tools.md") > 0) print line
+          close("tools.md")
+          skip = 1
+          next
+        }
+        /^##/ && skip {
+          skip = 0
+        }
+        !skip {
+          print
+        }
+        ' README.md > README_new.md && mv README_new.md README.md
+        
+    - name: ⏰ Add timestamp
+      run: |
+        echo "" >> README.md
+        echo "---" >> README.md
+        echo "*Last updated: $(date '+%B %d, %Y at %H:%M UTC')*" >> README.md
+        
+    - name: 🚀 Commit changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [[ -n $(git status --porcelain) ]]; then
+          git add README.md
+          git commit -m "📝 Auto-update README with current tools and info"
+          git push
+        else
+          echo "No changes to commit"
+        fi
