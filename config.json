@@ -1,8 +1,0 @@
-{
-  "enabledTools": [
-    "spotify.getPlayback",
-    "spotify.play",
-    "spotify.pause"
-  ],
-  "defaultDevice": "66e521e76f12b83d886d45865484bca6310d53fc"
-}
