@@ -30,13 +30,13 @@ jobs:
         echo "" >> tools.md
         
         # Scan for registerTool calls and extract tool names
-        grep -o 'registerTool([^,]*' src/spotify-stdio.js | \
+        grep -o 'registerTool([^,]*' src/mcp-server.js | \
         sed 's/registerTool("/- `/' | \
         sed 's/"/`/' | \
         sort >> tools.md
         
         # Count total tools
-        TOOL_COUNT=$(grep -c "registerTool" src/spotify-stdio.js)
+        TOOL_COUNT=$(grep -c "registerTool" src/mcp-server.js)
         echo "Found $TOOL_COUNT tools"
         echo "TOOL_COUNT=$TOOL_COUNT" >> $GITHUB_ENV
         
