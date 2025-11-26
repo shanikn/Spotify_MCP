@@ -1,13 +1,13 @@
 // OAuth flow and token refresh
-// NOTE: Environment variables should be set by the parent process (either .env via mcp-server.js or Claude Desktop config)
+// NOTE: Environment variables should be set by the parent process!! (either .env via mcp-server.js or Claude Desktop config)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Token file is in the project root, one level up from src/
+    
+// Token file is in the project root (one level up from src/ )
 const TOKEN_PATH = path.join(__dirname, "..", "tokens.json");
 
 const SCOPES = [
@@ -19,6 +19,7 @@ const SCOPES = [
     "playlist-read-private",
     "playlist-read-collaborative"
 ].join(" ");
+
 
 function requireEnv(name){
     const value = process.env[name];
@@ -43,7 +44,6 @@ export function getLoginUrl(){
 }
 
 
-// QUESTION: do we still need this? should we change the function to do     automatic authentication refresh?
 async function saveToken(data){
     const withExpiry = {
         ...data,
@@ -92,6 +92,7 @@ async function loadToken(){
 }
 
 
+// auto refresh for spotify token (cause it expires every hour..) 
 async function refreshToken(current){
     const clientId = requireEnv("CLIENT_ID");
     const clientSecret = requireEnv("CLIENT_SECRET");
@@ -116,7 +117,7 @@ async function refreshToken(current){
         );
     }
 
-    // Spotify may or may not return a new refresh_token
+    // spotify may or may not return a new refresh_token (depeneds on the current token's expiration)
     const merged = {
         ...current,
         ...data,
@@ -141,6 +142,7 @@ export async function getAccessToken() {
     const refreshed = await refreshToken(token);
     return refreshed.access_token;
 }
+
 
 // Function to check if current tokens have required scopes
 export async function checkScopes() {

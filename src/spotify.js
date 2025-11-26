@@ -145,12 +145,11 @@ export async function pausePlayback() {
 // Added a devide property
 export async function resumePlayback() {
     const device = config.defaultDevice || null;
-    const body = device ? JSON.stringify({ device_id: device}) : undefined;
+    const body = device ? `/me/player/play?device_id=${device}` : "/me/player/play";
 
 
-    await spotifyFetch("/me/player/play", { 
-        method: "PUT",
-        body 
+    await spotifyFetch(url, { 
+        method: "PUT"
     });
     return { ok: true };
 }
@@ -341,10 +340,6 @@ export async function playUri(uri, contextUri = null) {
     const device = config.defaultDevice || null;
     const body = {};
     
-    if (device) {
-        body.device_id = device;
-    }
-    
     if (contextUri) {
         // Playing from a context (album/playlist)
         body.context_uri = contextUri;
@@ -357,7 +352,11 @@ export async function playUri(uri, contextUri = null) {
         body.context_uri = uri;
     }
     
-    await spotifyFetch("/me/player/play", { 
+    // Build URL with device_id query parameter if available
+    // This activates the device even if it's inactive
+    const url = device ? `/me/player/play?device_id=${device}` : "/me/player/play";
+    
+    await spotifyFetch(url, { 
         method: "PUT",
         body: JSON.stringify(body)
     });

@@ -107,6 +107,150 @@ const server = new McpServer({
 });
 
 // Register tools using the high-level API
+
+// Help command to list all available tools
+server.registerTool(
+    "spotify_help",
+    {
+        description: "Get a comprehensive list of all available Spotify MCP tools and their descriptions",
+        inputSchema: {} // No parameters needed
+    },
+    async () => {
+        const helpText = `
+🎵 SPOTIFY MCP - AVAILABLE TOOLS 🎵
+
+═══════════════════════════════════════════════════════════════
+
+📊 PLAYBACK CONTROL
+-------------------
+• spotify_getPlayback
+  Get current playback state (track, device, play status)
+
+• spotify_play
+  Resume playback on active device
+
+• spotify_pause
+  Pause playback on active device
+
+• spotify_ping
+  Ping Spotify to check connection (Note: doesn't activate sleeping devices)
+
+• spotify_playUri
+  Play a specific track/album/playlist by URI
+  Parameters: uri (required), contextUri (optional)
+
+• spotify_skipToNext
+  Skip to next track in queue
+
+• spotify_skipToPrevious
+  Skip to previous track (even if >3s into current)
+
+• spotify_restartTrack
+  Restart current track from beginning
+
+• spotify_seek
+  Seek to specific position in track
+  Parameters: positionMs (required)
+
+
+🔊 PLAYBACK SETTINGS
+--------------------
+• spotify_setVolume
+  Set volume level (0-100%)
+  Parameters: volume (required, 0-100)
+
+• spotify_setShuffle
+  Toggle shuffle mode
+  Parameters: state (required, true/false)
+
+• spotify_setRepeat
+  Set repeat mode
+  Parameters: state (required, "track"/"context"/"off")
+
+
+📱 DEVICE MANAGEMENT
+-------------------
+• spotify_listDevices
+  List all available Spotify devices
+
+• spotify_switchDevice
+  Switch playback to a different device
+  Parameters: deviceName (required)
+
+
+🎵 QUEUE MANAGEMENT
+------------------
+• spotify_getQueue
+  Get current playback queue
+
+• spotify_addToQueue
+  Add track to queue
+  Parameters: uri (required)
+
+
+🔍 SEARCH & DISCOVERY
+---------------------
+• spotify_search
+  Search for tracks/artists/albums/playlists
+  Parameters: query (required), types (optional array), limit (optional)
+
+• spotify_getRecommendations
+  Get personalized recommendations
+  Parameters: seedArtists, seedTracks, seedGenres, targetEnergy,
+             targetValence, targetDanceability, targetInstrumentalness,
+             targetTempo, limit
+
+• spotify_getAvailableGenres
+  Get list of available genres for recommendations
+
+
+📚 LIBRARY
+---------
+• spotify_getSavedAlbums
+  Get user's saved albums
+  Parameters: limit (optional, max 50), offset (optional)
+
+• spotify_getUserPlaylists
+  Get user's playlists
+  Parameters: limit (optional, max 50)
+
+
+⏱️ HISTORY
+----------
+• spotify_getRecentlyPlayed
+  Get recently played tracks
+  Parameters: limit (optional), after (optional), before (optional)
+
+• spotify_getRecentlyAddedAlbums
+  Get recently saved albums
+  Parameters: limit (optional), offset (optional)
+
+• spotify_getRecentlyAddedTracks
+  Get recently liked songs
+  Parameters: limit (optional), offset (optional)
+
+
+💡 TIPS
+-------
+• URIs format: spotify:track:... or spotify:album:... or spotify:playlist:...
+• Most commands require an active Spotify device
+• Use spotify_search to find URIs for tracks/albums/playlists
+• Maximum 5 seeds total for recommendations (artists + tracks + genres)
+
+═══════════════════════════════════════════════════════════════
+`;
+        
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: helpText
+                }
+            ]
+        };
+    }
+);
+
 server.registerTool(
     "spotify_getPlayback",
     {
